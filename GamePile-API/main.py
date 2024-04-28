@@ -18,7 +18,7 @@ class Game:
     def __str__(self):
         return f"{self.name}, {self.desc}, {self.releaseDate}, {self.genres}, {self.developers}, {self.publishers}, {self.platforms}, {self.iconURL}"
 
-    def getJson(self):
+    def getDict(self):
         gameDict = {}
         gameDict["name"] = self.name
         gameDict["description"] = self.desc
@@ -28,7 +28,7 @@ class Game:
         gameDict["publishers"] = self.publishers
         gameDict["platforms"] = self.platforms
         gameDict["iconURL"] = self.iconURL
-        return json.dumps(gameDict,indent=2)
+        return gameDict
 
 
 steamApiUrl = "http://api.steampowered.com/ISteamApps/GetAppList/v0002/?format=json"
@@ -55,7 +55,12 @@ def steamJsonFormatter(steamJson: dict) -> Game:
     description = steamJson["short_description"]
 
     release_date_string = steamJson["release_date"]["date"]
-    release_date = datetime.strptime(release_date_string, "%d %b, %Y").date()
+    try:
+        release_date = datetime.strptime(release_date_string, "%d %b, %Y").date()
+    except ValueError:
+        # fallback date
+        release_date = date(1990,1,1)
+
 
     iconURL = steamJson["header_image"]
 
@@ -99,6 +104,7 @@ def setupArgs():
         )
     parser.add_argument('searchterm',help="The game to search for.")
     parser.add_argument('-i','--index',type=int,default=0,help="The search result to fetch. Indexes from 0.")
+    parser.add_argument('-n','--number',type=int,default=1,help="The number of results to fetch. Starts at -i, if specified.")
 
     return(parser.parse_args())
 
@@ -108,5 +114,12 @@ if __name__ == "__main__":
 
     games = searchGameList(args.searchterm, gameList)
 
-    print(getGameInfo(games[args.index]["appid"]).getJson())
+    returnedGames = games[args.index:args.index+args.number]
+    output = []
+    for game in returnedGames:
+        output.append(getGameInfo(game["appid"]).getDict())
+
+    print(json.dumps(output, indent=2))
+
+    #print(getGameInfo(games[args.index]["appid"]).getJson())
 
